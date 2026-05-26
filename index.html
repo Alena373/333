@@ -1,0 +1,558 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#6f4e37">
+<title>☕ Учёт ингредиентов</title>
+<link rel="manifest" href="data:application/json,{%22name%22:%22Учёт%20кофе%22,%22short_name%22:%22Кофе%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%23f5f0e8%22,%22theme_color%22:%22%236f4e37%22,%22icons%22:[{%22src%22:%22data:image/svg+xml;utf8,<svg xmlns=%5C%22http://www.w3.org/2000/svg%5C%22 viewBox=%5C%220 0 100 100%5C%22><text y=%5C%22.9em%5C%22 font-size=%5C%2290%5C%22>☕</text></svg>%22,%22sizes%22:%22192x192%22,%22type%22:%22image/svg+xml%22}]}">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: linear-gradient(135deg, #f5f0e8 0%, #e8dcc4 100%);
+  min-height: 100vh;
+  color: #3e2723;
+  padding-bottom: 80px;
+}
+header {
+  background: linear-gradient(135deg, #6f4e37 0%, #4e342e 100%);
+  color: #fff;
+  padding: 18px 16px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+header h1 { font-size: 1.3rem; font-weight: 600; }
+header p { font-size: 0.8rem; opacity: 0.85; margin-top: 2px; }
+
+.tabs {
+  display: flex;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  position: sticky;
+  top: 72px;
+  z-index: 99;
+}
+.tab {
+  flex: 1;
+  padding: 14px 8px;
+  text-align: center;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #8d6e63;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+}
+.tab.active {
+  color: #6f4e37;
+  border-bottom-color: #6f4e37;
+  background: #fbf7f1;
+}
+
+.container { padding: 16px; max-width: 600px; margin: 0 auto; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.2s;
+  font-family: inherit;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: linear-gradient(135deg, #6f4e37, #4e342e); color: #fff; box-shadow: 0 4px 10px rgba(111,78,55,0.3); }
+.btn-danger { background: linear-gradient(135deg, #c62828, #8e1a1a); color: #fff; box-shadow: 0 4px 10px rgba(198,40,40,0.25); }
+.btn-success { background: linear-gradient(135deg, #43a047, #2e7d32); color: #fff; }
+.btn-small { padding: 8px 12px; font-size: 0.85rem; border-radius: 8px; }
+.btn-full { width: 100%; }
+.btn-icon { background: transparent; padding: 6px; color: #8d6e63; }
+
+.add-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.add-bar input {
+  flex: 1;
+  padding: 12px 14px;
+  border: 2px solid #d7ccc8;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  background: #fff;
+  font-family: inherit;
+}
+.add-bar input:focus { outline: none; border-color: #6f4e37; }
+
+.point-card {
+  background: #fff;
+  border-radius: 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+  overflow: hidden;
+  transition: box-shadow 0.2s;
+}
+.point-header {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  cursor: pointer;
+  background: linear-gradient(135deg, #fbf7f1, #f5ede0);
+  user-select: none;
+}
+.point-icon { font-size: 1.6rem; margin-right: 10px; }
+.point-name { flex: 1; font-size: 1.05rem; font-weight: 600; color: #4e342e; }
+.point-toggle { font-size: 1.2rem; color: #8d6e63; transition: transform 0.2s; }
+.point-card.expanded .point-toggle { transform: rotate(180deg); }
+.point-body { display: none; padding: 8px 12px 12px; }
+.point-card.expanded .point-body { display: block; }
+
+.ingredient {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid #f0e8d8;
+  gap: 10px;
+}
+.ingredient:last-child { border-bottom: none; }
+.ing-icon { font-size: 1.4rem; width: 32px; text-align: center; }
+.ing-info { flex: 1; min-width: 0; }
+.ing-name { font-size: 0.9rem; font-weight: 600; color: #4e342e; }
+.ing-meta { font-size: 0.75rem; color: #8d6e63; margin-top: 2px; }
+.ing-qty {
+  background: #6f4e37;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  min-width: 40px;
+  text-align: center;
+}
+
+.point-actions {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  background: #fbf7f1;
+}
+
+/* Модалка */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  max-width: 400px;
+  width: 100%;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+}
+.modal h3 { margin-bottom: 14px; color: #4e342e; font-size: 1.1rem; }
+.modal label { display: block; font-size: 0.85rem; color: #6f4e37; margin: 10px 0 4px; font-weight: 500; }
+.modal input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 2px solid #d7ccc8;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+.modal input:focus { outline: none; border-color: #6f4e37; }
+.modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+.modal-actions .btn { flex: 1; }
+
+/* Отчёт */
+.report-controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.report-controls select {
+  flex: 1;
+  padding: 12px;
+  border: 2px solid #d7ccc8;
+  border-radius: 12px;
+  background: #fff;
+  font-size: 0.9rem;
+  font-family: inherit;
+  min-width: 120px;
+}
+
+.report-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 12px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.06);
+}
+.report-title { font-weight: 700; color: #4e342e; margin-bottom: 8px; font-size: 1rem; display: flex; align-items: center; gap: 6px; }
+.report-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 0.9rem; border-bottom: 1px dashed #f0e8d8; }
+.report-row:last-child { border-bottom: none; }
+.report-total {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 2px solid #6f4e37;
+  font-weight: 700;
+  color: #6f4e37;
+  display: flex;
+  justify-content: space-between;
+  font-size: 1.05rem;
+}
+.grand-total {
+  background: linear-gradient(135deg, #6f4e37, #4e342e);
+  color: #fff;
+  padding: 18px;
+  border-radius: 14px;
+  text-align: center;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 14px rgba(111,78,55,0.3);
+}
+.grand-total .label { font-size: 0.85rem; opacity: 0.9; }
+.grand-total .amount { font-size: 1.8rem; font-weight: 700; margin-top: 4px; }
+
+.empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: #8d6e63;
+}
+.empty .icon { font-size: 3rem; margin-bottom: 10px; }
+
+/* Цены */
+.price-row {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  gap: 10px;
+}
+.price-row .ing-icon { font-size: 1.3rem; }
+.price-row .name { flex: 1; font-size: 0.9rem; font-weight: 500; }
+.price-row input {
+  width: 90px;
+  padding: 8px;
+  border: 2px solid #d7ccc8;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  text-align: right;
+  font-family: inherit;
+}
+.price-row input:focus { outline: none; border-color: #6f4e37; }
+
+.danger-zone {
+  margin-top: 30px;
+  padding: 16px;
+  border: 2px dashed #ef9a9a;
+  border-radius: 12px;
+  background: #ffebee;
+}
+.danger-zone h3 { color: #c62828; margin-bottom: 10px; font-size: 0.95rem; }
+
+.history-entry {
+  font-size: 0.75rem;
+  color: #8d6e63;
+  padding: 2px 0;
+}
+
+.section-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #4e342e;
+  margin: 16px 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>☕ Учёт ингредиентов</h1>
+  <p>Вендинговые аппараты</p>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="points">📍 Точки</div>
+  <div class="tab" data-tab="prices">💰 Цены</div>
+  <div class="tab" data-tab="report">📊 Отчёт</div>
+</div>
+
+<div class="container">
+
+  <!-- ВКЛАДКА: ТОЧКИ -->
+  <div id="tab-points">
+    <div class="add-bar">
+      <input type="text" id="newPointName" placeholder="Название точки...">
+      <button class="btn btn-primary" onclick="addPoint()">➕</button>
+    </div>
+    <div id="pointsList"></div>
+  </div>
+
+  <!-- ВКЛАДКА: ЦЕНЫ -->
+  <div id="tab-prices" style="display:none">
+    <div class="section-title">💵 Стоимость ингредиентов (₽ за единицу)</div>
+    <div id="pricesList"></div>
+    <div class="danger-zone">
+      <h3>⚠️ Опасная зона</h3>
+      <button class="btn btn-danger btn-full" onclick="resetAll()">🗑️ Сбросить все данные</button>
+    </div>
+  </div>
+
+  <!-- ВКЛАДКА: ОТЧЁТ -->
+  <div id="tab-report" style="display:none">
+    <div class="report-controls">
+      <select id="reportPeriod" onchange="renderReport()">
+        <option value="month">За месяц</option>
+        <option value="halfyear">За полгода</option>
+        <option value="year">За год</option>
+      </select>
+      <select id="reportPoint" onchange="renderReport()">
+        <option value="all">Все точки</option>
+      </select>
+    </div>
+    <div id="reportContent"></div>
+  </div>
+
+</div>
+
+<!-- МОДАЛКА редактирования -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <h3 id="editTitle">Редактировать</h3>
+    <label>Количество (добавить поставку)</label>
+    <input type="number" id="editQty" min="0" step="1" value="0">
+    <label>Дата поставки</label>
+    <input type="date" id="editDate">
+    <div class="modal-actions">
+      <button class="btn btn-small" onclick="closeModal()" style="background:#e0e0e0;color:#333">Отмена</button>
+      <button class="btn btn-primary btn-small" onclick="saveDelivery()">💾 Сохранить</button>
+    </div>
+    <button class="btn btn-small btn-full" style="margin-top:8px;background:#fff3e0;color:#e65100" onclick="setCurrentStock()">✏️ Задать текущий остаток</button>
+  </div>
+</div>
+
+<script>
+// ===== ДАННЫЕ =====
+const INGREDIENTS = [
+  { id: 'coffee',    name: 'Кофе',         icon: '☕', unit: 'пачка (1 кг)' },
+  { id: 'milk',      name: 'Молоко',       icon: '🥛', unit: 'пачка (1 кг)' },
+  { id: 'chocolate', name: 'Горячий шоколад', icon: '🍫', unit: 'пачка (1 кг)' },
+  { id: 'raf',       name: 'Раф',          icon: '🍮', unit: 'пачка (1 кг)' },
+  { id: 'sugar',     name: 'Сахар',        icon: '🍬', unit: 'коробка' },
+  { id: 'cups',      name: 'Стаканы',      icon: '🥤', unit: 'коробка' },
+  { id: 'lids',      name: 'Крышки',       icon: '🧢', unit: 'коробка' },
+  { id: 'sticks',    name: 'Палочки',      icon: '🥢', unit: 'упаковка' },
+  { id: 'water',     name: 'Вода',         icon: '💧', unit: 'бутыль 19 л' },
+];
+
+const DEFAULT_PRICES = {
+  coffee: 600, milk: 250, chocolate: 500, raf: 700,
+  sugar: 400, cups: 800, lids: 600, sticks: 200, water: 250
+};
+
+let data = {
+  points: [],   // { id, name, expanded, stock: { coffee: N }, lastDate: { coffee: '2024-..' }, history: [{ ingId, qty, date, price }] }
+  prices: { ...DEFAULT_PRICES }
+};
+
+// ===== ХРАНИЛИЩЕ =====
+function save() {
+  localStorage.setItem('coffeeVendingData', JSON.stringify(data));
+}
+function load() {
+  const s = localStorage.getItem('coffeeVendingData');
+  if (s) {
+    try {
+      data = JSON.parse(s);
+      if (!data.prices) data.prices = { ...DEFAULT_PRICES };
+      if (!data.points) data.points = [];
+    } catch(e) { console.error(e); }
+  }
+}
+
+// ===== ТАБЫ =====
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    const name = t.dataset.tab;
+    document.getElementById('tab-points').style.display  = name === 'points' ? '' : 'none';
+    document.getElementById('tab-prices').style.display  = name === 'prices' ? '' : 'none';
+    document.getElementById('tab-report').style.display  = name === 'report' ? '' : 'none';
+    if (name === 'prices') renderPrices();
+    if (name === 'report') { fillReportPoints(); renderReport(); }
+  });
+});
+
+// ===== ТОЧКИ =====
+function addPoint() {
+  const input = document.getElementById('newPointName');
+  const name = input.value.trim();
+  if (!name) { input.focus(); return; }
+  const point = {
+    id: 'p_' + Date.now(),
+    name,
+    expanded: true,
+    stock: {},
+    lastDate: {},
+    history: []
+  };
+  INGREDIENTS.forEach(ing => { point.stock[ing.id] = 0; point.lastDate[ing.id] = ''; });
+  data.points.push(point);
+  input.value = '';
+  save();
+  renderPoints();
+}
+
+function deletePoint(pointId) {
+  const p = data.points.find(x => x.id === pointId);
+  if (!confirm(`Удалить точку "${p.name}"? Все данные будут потеряны.`)) return;
+  data.points = data.points.filter(x => x.id !== pointId);
+  save();
+  renderPoints();
+}
+
+function togglePoint(pointId) {
+  const p = data.points.find(x => x.id === pointId);
+  p.expanded = !p.expanded;
+  save();
+  renderPoints();
+}
+
+function renderPoints() {
+  const root = document.getElementById('pointsList');
+  if (data.points.length === 0) {
+    root.innerHTML = `<div class="empty"><div class="icon">📍</div><p>Точек ещё нет.<br>Добавьте первую сверху.</p></div>`;
+    return;
+  }
+  root.innerHTML = data.points.map(p => `
+    <div class="point-card ${p.expanded ? 'expanded' : ''}">
+      <div class="point-header" onclick="togglePoint('${p.id}')">
+        <div class="point-icon">🏪</div>
+        <div class="point-name">${escapeHtml(p.name)}</div>
+        <div class="point-toggle">▼</div>
+      </div>
+      <div class="point-body">
+        ${INGREDIENTS.map(ing => `
+          <div class="ingredient" onclick="openEditModal('${p.id}','${ing.id}')">
+            <div class="ing-icon">${ing.icon}</div>
+            <div class="ing-info">
+              <div class="ing-name">${ing.name}</div>
+              <div class="ing-meta">${ing.unit} · ${p.lastDate[ing.id] ? '📅 ' + formatDate(p.lastDate[ing.id]) : 'нет поставок'}</div>
+            </div>
+            <div class="ing-qty">${p.stock[ing.id] || 0}</div>
+          </div>
+        `).join('')}
+        <div class="point-actions">
+          <button class="btn btn-danger btn-small btn-full" onclick="deletePoint('${p.id}')">🗑️ Удалить точку</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ===== МОДАЛКА =====
+let editContext = null;
+
+function openEditModal(pointId, ingId) {
+  event.stopPropagation();
+  editContext = { pointId, ingId };
+  const ing = INGREDIENTS.find(x => x.id === ingId);
+  const p = data.points.find(x => x.id === pointId);
+  document.getElementById('editTitle').textContent = `${ing.icon} ${ing.name} — ${p.name}`;
+  document.getElementById('editQty').value = '';
+  document.getElementById('editDate').value = new Date().toISOString().slice(0,10);
+  document.getElementById('editModal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('editModal').classList.remove('show');
+  editContext = null;
+}
+
+function saveDelivery() {
+  if (!editContext) return;
+  const qty = parseInt(document.getElementById('editQty').value) || 0;
+  const date = document.getElementById('editDate').value;
+  if (qty <= 0) { alert('Введите количество больше 0'); return; }
+  if (!date) { alert('Укажите дату'); return; }
+
+  const p = data.points.find(x => x.id === editContext.pointId);
+  p.stock[editContext.ingId] = (p.stock[editContext.ingId] || 0) + qty;
+  p.lastDate[editContext.ingId] = date;
+  p.history.push({
+    ingId: editContext.ingId,
+    qty,
+    date,
+    price: data.prices[editContext.ingId] || 0
+  });
+  save();
+  renderPoints();
+  closeModal();
+}
+
+function setCurrentStock() {
+  if (!editContext) return;
+  const val = prompt('Введите ТЕКУЩИЙ остаток (без добавления в историю поставок):');
+  if (val === null) return;
+  const n = parseInt(val);
+  if (isNaN(n) || n < 0) { alert('Некорректное число'); return; }
+  const p = data.points.find(x => x.id === editContext.pointId);
+  p.stock[editContext.ingId] = n;
+  save();
+  renderPoints();
+  closeModal();
+}
+
+// ===== ЦЕНЫ =====
+function renderPrices() {
+  const root = document.getElementById('pricesList');
+  root.innerHTML = INGREDIENTS.map(ing => `
+    <div class="price-row">
+      <div class="ing-icon">${ing.icon}</div>
+      <div class="name">${ing.name}<br><small style="color:#8d6e63">${ing.unit}</small></div>
+      <input type="number" min="0" step="1" value="${data.prices[ing.id] || 0}" 
+             onchange="updatePrice('${ing.id}', this.value)"> ₽
+    </div>
+  `).join('');
+}
+
+function updatePrice(ingId, val) {
+  data.prices[ingId] = parseFloat(val) || 0;
+  save();
+}
+
+// ===== ОТЧЁТ =====
+function fillReportPoints() {
+  const sel = document.getElementById('reportPoint');
+  sel.innerHTML = '<option value="all">📊 Все точки</option>' +
+    data.points.map(p => `<option value="${p.id}">🏪 ${escapeHtml(p.name)}</option>`).join('');
+}
+
+function getPeriodStart() {
+  const period = document.getElementById('reportPeriod').value;
+  const now = new Date();
+  if (period === 'month') return new Date(now.getFullYear(), now.getMonth(), 1
